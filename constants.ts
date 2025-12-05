@@ -1,0 +1,225 @@
+
+import { StateData, Tactic, AIProvider } from './types';
+
+export const INITIAL_FUNDS = 2000000; // $2M
+export const INITIAL_ENERGY = 100;
+export const MAX_DAYS = 30;
+export const WINNING_THRESHOLD = 270;
+
+export const PROVIDERS: { value: AIProvider; label: string; defaultUrl?: string; defaultModel: string }[] = [
+  { value: 'google', label: 'Google (Gemini)', defaultModel: 'gemini-2.5-flash' },
+  { value: 'openrouter', label: 'OpenRouter (Recommended for DeepSeek/GPT)', defaultUrl: 'https://openrouter.ai/api/v1', defaultModel: 'deepseek/deepseek-chat' },
+  { value: 'openai', label: 'OpenAI (GPT) [Requires Proxy]', defaultUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o' },
+  { value: 'deepseek', label: 'DeepSeek [Requires Proxy]', defaultUrl: 'https://api.deepseek.com', defaultModel: 'deepseek-chat' },
+  { value: 'claude', label: 'Anthropic (Claude) [Requires Proxy]', defaultUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-3-5-sonnet-20240620' },
+  { value: 'grok', label: 'xAI (Grok) [Requires Proxy]', defaultUrl: 'https://api.x.ai/v1', defaultModel: 'grok-beta' },
+  { value: 'ollama', label: 'Ollama (Local)', defaultUrl: 'http://localhost:11434/v1', defaultModel: 'llama3' },
+];
+
+export const TACTICS: Record<string, Tactic[]> = {
+  en: [
+    { type: 'none', name: 'Honest Approach', cost: 0, description: 'Rely on your charisma. No bonus.' },
+    { type: 'spin', name: 'Spin Doctor', cost: 50000, description: 'Hire experts to twist the narrative. Mitigates negative outcomes.' },
+    { type: 'smear', name: 'Smear Campaign', cost: 100000, description: 'Attack opponents while you speak. High risk, high reward.' },
+    { type: 'bribe', name: 'Dark Money Injection', cost: 250000, description: 'Pay off local influencers. Guarantees positive polling, but raises Scandal.' },
+  ],
+  zh: [
+    { type: 'none', name: '诚实竞选', cost: 0, description: '依靠你的人格魅力。无加成。' },
+    { type: 'spin', name: '舆论公关', cost: 50000, description: '雇佣专家以此引导舆论。减轻负面结果。' },
+    { type: 'smear', name: '抹黑战术', cost: 100000, description: '在演讲中攻击对手。高风险，高回报。' },
+    { type: 'bribe', name: '黑金注入', cost: 250000, description: '收买当地有影响力的人。保证民调上升，但增加丑闻值。' },
+  ]
+};
+
+// A simplified list of key states for gameplay flow
+export const INITIAL_STATES: StateData[] = [
+  {
+    id: 'CA',
+    name: 'California',
+    name_zh: '加利福尼亚州',
+    abbr: 'CA',
+    electoralVotes: 54,
+    polling: 60,
+    locked: false,
+    type: 'safe',
+    status: 'unvisited',
+    description: 'The Golden State. Tech moguls, homeless crisis, and extremely expensive fundraisers.'
+  },
+  {
+    id: 'TX',
+    name: 'Texas',
+    name_zh: '德克萨斯州',
+    abbr: 'TX',
+    electoralVotes: 40,
+    polling: 40,
+    locked: false,
+    type: 'hostile',
+    status: 'unvisited',
+    description: 'The Lone Star State. Oil barons, border tensions, and fiercely independent voters.'
+  },
+  {
+    id: 'FL',
+    name: 'Florida',
+    name_zh: '佛罗里达州',
+    abbr: 'FL',
+    electoralVotes: 30,
+    polling: 48,
+    locked: false,
+    type: 'swing',
+    status: 'unvisited',
+    description: 'The Sunshine State. Retirees, climate disasters, and political chaos.'
+  },
+  {
+    id: 'NY',
+    name: 'New York',
+    name_zh: '纽约州',
+    abbr: 'NY',
+    electoralVotes: 28,
+    polling: 58,
+    locked: false,
+    type: 'safe',
+    status: 'unvisited',
+    description: 'The Empire State. Wall Street greed vs. progressive activists.'
+  },
+  {
+    id: 'PA',
+    name: 'Pennsylvania',
+    name_zh: '宾夕法尼亚州',
+    abbr: 'PA',
+    electoralVotes: 19,
+    polling: 50,
+    locked: false,
+    type: 'swing',
+    status: 'unvisited',
+    description: 'The Keystone State. Fracking debates and suburban moms deciding the fate of the world.'
+  },
+  {
+    id: 'IL',
+    name: 'Illinois',
+    name_zh: '伊利诺伊州',
+    abbr: 'IL',
+    electoralVotes: 19,
+    polling: 55,
+    locked: false,
+    type: 'safe',
+    status: 'unvisited',
+    description: 'Land of Lincoln. Political corruption is a local sport here.'
+  },
+  {
+    id: 'OH',
+    name: 'Ohio',
+    name_zh: '俄亥俄州',
+    abbr: 'OH',
+    electoralVotes: 17,
+    polling: 45,
+    locked: false,
+    type: 'swing',
+    status: 'unvisited',
+    description: 'The Buckeye State. Rust belt decline and shifting loyalties.'
+  },
+  {
+    id: 'GA',
+    name: 'Georgia',
+    name_zh: '佐治亚州',
+    abbr: 'GA',
+    electoralVotes: 16,
+    polling: 49,
+    locked: false,
+    type: 'swing',
+    status: 'unvisited',
+    description: 'The Peach State. Atlanta suburbs vs. rural tradition.'
+  },
+  {
+    id: 'MI',
+    name: 'Michigan',
+    name_zh: '密歇根州',
+    abbr: 'MI',
+    electoralVotes: 15,
+    polling: 51,
+    locked: false,
+    type: 'swing',
+    status: 'unvisited',
+    description: 'The Great Lakes State. Auto unions and water crisis.'
+  },
+];
+
+export const TEXT = {
+  en: {
+    title: "Campaign 270",
+    subtitle: "House of AI Cards",
+    funds: "War Chest",
+    energy: "Stamina",
+    days: "Days Left",
+    votes: "Electoral Votes",
+    scandal: "Scandal Level",
+    needed: "Needed to Win",
+    start: "Enter the Race",
+    restart: "Run Again",
+    loading: "Plotting Move (AI Thinking)...",
+    visit: "Invade State",
+    cost: "Cost",
+    locked: "Locked",
+    visited: "Conquered",
+    safe: "Safe Blue",
+    swing: "Battleground",
+    hostile: "Deep Red",
+    gameOver: "Election Night",
+    winTitle: "Mr. President!",
+    winDesc: "You manipulated, spent, and charmed your way to the top. Democracy is yours to mold.",
+    loseTitle: "Conceded",
+    loseDesc: "You ran out of tricks. The voters saw through the charade.",
+    eventTitle: "Breaking News",
+    choose: "Your Move",
+    outcome: "The Aftermath",
+    apiMissing: "AI Config Missing",
+    apiDesc: "Please configure a Generative AI Model to play.",
+    instruction: "Welcome to the swamp. Travel states, spin narratives, bury scandals, and buy votes. Politics is a contact sport.",
+    settings: "AI Settings",
+    tactics: "Campaign Tactics (Spend Funds)",
+    configure: "Configure AI",
+    save: "Save & Close",
+    cancel: "Cancel",
+    newConfig: "New Config",
+    scandalWarning: "High Scandal! Polling Capped!",
+    tacticLabel: "Apply Tactic:",
+  },
+  zh: {
+    title: "决战270",
+    subtitle: "AI 纸牌屋",
+    funds: "战争基金",
+    energy: "精力值",
+    days: "剩余天数",
+    votes: "选举人票",
+    scandal: "丑闻指数",
+    needed: "胜选所需",
+    start: "加入角逐",
+    restart: "重新参选",
+    loading: "策划中 (AI思考)...",
+    visit: "进驻该州",
+    cost: "花费",
+    locked: "未解锁",
+    visited: "竞选结束",
+    safe: "稳固票仓",
+    swing: "摇摆战场",
+    hostile: "敌对阵地",
+    gameOver: "大选之夜",
+    winTitle: "总统阁下！",
+    winDesc: "你通过操纵、金钱和魅力登上了顶峰。民主现在任你塑造。",
+    loseTitle: "发表败选感言",
+    loseDesc: "你的把戏用尽了。选民看穿了你的伪装。",
+    eventTitle: "突发新闻",
+    choose: "你的对策",
+    outcome: "后续影响",
+    apiMissing: "未配置 AI",
+    apiDesc: "请配置生成式 AI 模型以开始游戏。",
+    instruction: "欢迎来到政治泥潭。周游各州，编造叙事，掩盖丑闻，购买选票。政治是一项接触性运动。",
+    settings: "AI 设置",
+    tactics: "竞选战术 (花费资金)",
+    configure: "配置 AI 模型",
+    save: "保存并关闭",
+    cancel: "取消",
+    newConfig: "新建配置",
+    scandalWarning: "丑闻缠身！民调上限受限！",
+    tacticLabel: "应用战术:",
+  }
+};
